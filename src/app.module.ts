@@ -9,6 +9,7 @@ import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { AuthModule } from './auth/auth.module';
 import { StripeModule } from './stripe/stripe.module';
 import { RedisModule } from './redis/redis.module';
+import { PrismaModule } from './prisma/prisma.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { RedisModule } from './redis/redis.module';
       isGlobal: true,
       envFilePath: '.env',
     }),
+    PrismaModule,
     AuthModule,
     RedisModule,
     StripeModule,

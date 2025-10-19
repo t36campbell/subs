@@ -1,0 +1,29 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "cockroachdb"
+  url      = env("COCKROACH_URL")
+}
+
+
+model Subscription {
+  uid    String  @id
+  active Boolean @default(true)
+  tier   Tier
+
+  @@map("subscriptions")
+}
+
+enum Tier {
+  FREE
+  SOME
+  MORE
+  MANY
+  EXTRA
+  AMPLE
+  COPIOUS
+
+  @@map("TIERS")
+}
