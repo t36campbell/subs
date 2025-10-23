@@ -4,8 +4,6 @@ import { APP_PIPE, APP_INTERCEPTOR } from '@nestjs/core';
 import { ZodValidationPipe, ZodSerializerInterceptor } from 'nestjs-zod';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { UsersModule } from './users/users.module';
-import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { AuthModule } from './auth/auth.module';
 import { StripeModule } from './stripe/stripe.module';
 import { RedisModule } from './redis/redis.module';
@@ -17,12 +15,13 @@ import { PrismaModule } from './prisma/prisma.module';
       isGlobal: true,
       envFilePath: '.env',
     }),
-    PrismaModule,
+    // PrismaModule,
     AuthModule,
-    RedisModule,
-    StripeModule,
-    SubscriptionsModule,
-    UsersModule,
+    // RedisModule,
+    // StripeModule,
+    // SubscriptionsModule,
+    // UsersModule,
+    // BillingModule,
   ],
   controllers: [AppController],
   providers: [

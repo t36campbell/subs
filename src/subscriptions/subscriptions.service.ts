@@ -1,12 +1,12 @@
-import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
-import { StripeService } from '../stripe/stripe.service';
+import { Injectable, HttpException, HttpStatus, Inject } from '@nestjs/common';
+import Stripe from 'stripe';
 import { AuthService } from '../auth/auth.service';
 import { UpdateSubscriptionDto } from './dto/update-subscription.dto';
 
 @Injectable()
 export class SubscriptionsService {
   constructor(
-    private stripeService: StripeService,
+    @Inject('STRIPE') private stripe: Stripe,
     private authService: AuthService,
   ) {}
 
@@ -16,9 +16,11 @@ export class SubscriptionsService {
     updateDto: UpdateSubscriptionDto,
   ) {
     try {
-      const updatedSubscription = await this.stripeService.updateSubscription(
+      const updatedSubscription = await this.stripe.subscriptions.update(
         subscriptionId,
-        updateDto.priceId,
+        {
+          items: [{ price: updateDto.priceId }],
+        },
       );
 
       // Update Auth0 metadata
@@ -45,9 +47,11 @@ export class SubscriptionsService {
     updateDto: UpdateSubscriptionDto,
   ) {
     try {
-      const updatedSubscription = await this.stripeService.updateSubscription(
+      const updatedSubscription = await this.stripe.subscriptions.update(
         subscriptionId,
-        updateDto.priceId,
+        {
+          items: [{ price: updateDto.priceId }],
+        },
       );
 
       // Update Auth0 metadata
@@ -71,7 +75,7 @@ export class SubscriptionsService {
   async cancelSubscription(userId: string, subscriptionId: string) {
     try {
       const canceledSubscription =
-        await this.stripeService.cancelSubscription(subscriptionId);
+        await this.stripe.subscriptions.cancel(subscriptionId);
 
       // Update Auth0 metadata
       // await this.authService.updateUserMetadata(userId, {

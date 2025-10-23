@@ -1,10 +1,23 @@
-import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
-import { StripeService } from './stripe.service';
+import { Module, Global } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import Stripe from 'stripe';
 
+@Global()
 @Module({
-  imports: [ConfigModule],
-  providers: [StripeService],
-  exports: [StripeService],
+  providers: [
+    {
+      provide: 'STRIPE',
+      useFactory: (configService: ConfigService) => {
+        return new Stripe(
+          configService.get('STRIPE_SECRET', 'supersecret'),
+          {
+            apiVersion: '2025-09-30.clover',
+          },
+        );
+      },
+      inject: [ConfigService],
+    },
+  ],
+  exports: ['STRIPE'],
 })
 export class StripeModule {}

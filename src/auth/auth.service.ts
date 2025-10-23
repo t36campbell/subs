@@ -1,98 +1,97 @@
 import { Injectable, UnauthorizedException, Inject } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { Redis } from 'ioredis';
-import * as crypto from 'crypto';
 
 @Injectable()
 export class AuthService {
   constructor(
-    private jwtService: JwtService,
     private configService: ConfigService,
-    @Inject('REDIS_CLIENT') private redisClient: Redis,
+    @Inject('REDIS') private redisClient: Redis,
   ) {}
 
-  async validateUser(profile: any): Promise<any> {
-    // Here you would typically check if user exists in your database
-    // and create one if not
-    return {
-      id: profile.id,
-      email: profile.emails?.[0]?.value,
-      name: profile.displayName,
-      picture: profile.picture,
-    };
-  }
-
   async login(user: any) {
-    const payload = {
-      sub: user.id,
-      email: user.email,
-      name: user.name,
-    };
+    // Store refresh token in Redis for session management
+    await this.storeRefreshToken(user.userId, user.refreshToken);
 
-    const accessToken = this.generateAccessToken(payload);
-    const refreshToken = await this.generateRefreshToken(user.id);
-
+    // Return Auth0's tokens directly
     return {
-      access_token: accessToken,
-      refresh_token: refreshToken,
+      access_token: user.accessToken,
+      refresh_token: user.refreshToken,
+      id_token: user.idToken,
       token_type: 'Bearer',
-      expires_in: this.configService.get('JWT_EXPIRATION', '15m'),
+      expires_in: user.expiresIn,
     };
   }
 
-  generateAccessToken(payload: any): string {
-    return this.jwtService.sign(payload);
-  }
-
-  async generateRefreshToken(userId: string): Promise<string> {
-    const token = crypto.randomBytes(64).toString('hex');
+  async storeRefreshToken(userId: string, refreshToken: string): Promise<void> {
     const timeToLive = 60 * 60 * 24 * 30; // 30 days in seconds
 
-    // Store refresh token in Redis with expiration
+    // Store mapping of user to refresh token for session tracking
     await this.redisClient.setex(
-      token,
+      `refresh_token:${userId}`,
       timeToLive,
-      JSON.stringify({ userId }), // TODO: need to be an object?
+      JSON.stringify({ 
+        refreshToken,
+        storedAt: new Date().toISOString(),
+      }),
     );
-
-    return token;
   }
 
   async refreshTokens(refreshToken: string) {
-    // Check if refresh token exists in Redis
-    const { userId } = await this.validateRefreshToken(refreshToken)
-    
-    // Revoke old refresh token
-    await this.redisClient.del(refreshToken);
+    // Call Auth0's token endpoint to refresh
+    const auth0Domain = this.configService.get('AUTH0_DOMAIN');
+    const clientId = this.configService.get('AUTH0_CLIENT_ID');
+    const clientSecret = this.configService.get('AUTH0_CLIENT_SECRET');
 
-    // TODO: consistent payload
-    const payload = { sub: userId };
-    const newAccessToken = this.generateAccessToken(payload);
-    const newRefreshToken = await this.generateRefreshToken(userId);
+    const response = await fetch(`https://${auth0Domain}/oauth/token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        grant_type: 'refresh_token',
+        client_id: clientId,
+        client_secret: clientSecret,
+        refresh_token: refreshToken,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+
+    const tokens = await response.json();
 
     return {
-        token_type: 'Bearer',
-        access_token: newAccessToken,
-        refresh_token: newRefreshToken,
-        expires_in: this.configService.get('JWT_EXPIRATION', '15m'), // TODO: SYNC TTL
+      access_token: tokens.access_token,
+      id_token: tokens.id_token,
+      token_type: 'Bearer',
+      expires_in: tokens.expires_in,
+      // Auth0 may or may not return a new refresh token
+      ...(tokens.refresh_token && { refresh_token: tokens.refresh_token }),
     };
   }
 
-  async logout(refreshToken: string): Promise<void> {
-    // Revoke refresh token by removing it from Redis
-    await this.redisClient.del(refreshToken);
+  async logout(userId: string): Promise<void> {
+    // Remove refresh token from Redis
+    await this.redisClient.del(`refresh_token:${userId}`);
     
-    // TODO: blacklist the access token
+    // Note: Auth0 tokens can't be truly revoked unless you implement
+    // token blacklisting or use Auth0's revocation endpoint
   }
 
-  async validateRefreshToken(refreshToken: string): Promise<any> {
-    const result = await this.redisClient.get(refreshToken);
-    
-    if (!result) { // token not found or expired
-        throw new UnauthorizedException('Invalid refresh token');
-    }
+  async revokeAuth0RefreshToken(refreshToken: string): Promise<void> {
+    // Call Auth0's revocation endpoint
+    const auth0Domain = this.configService.get('AUTH0_DOMAIN');
+    const clientId = this.configService.get('AUTH0_CLIENT_ID');
+    const clientSecret = this.configService.get('AUTH0_CLIENT_SECRET');
 
-    const { userId } = JSON.parse(result);
+    await fetch(`https://${auth0Domain}/oauth/revoke`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        client_id: clientId,
+        client_secret: clientSecret,
+        token: refreshToken,
+      }),
+    });
   }
 }

@@ -6,18 +6,18 @@ import Redis from 'ioredis';
 @Module({
   providers: [
     {
-      provide: 'REDIS_CLIENT',
+      provide: 'REDIS',
       useFactory: (configService: ConfigService) => {
         return new Redis({
           host: configService.get('REDIS_HOST', 'localhost'),
           port: configService.get('REDIS_PORT', 6379),
           password: configService.get('REDIS_PASSWORD'),
-          db: configService.get('REDIS_DB', 0),
+          db: configService.get('REDIS_DB', 1), // refresh token db is secondary
         });
       },
       inject: [ConfigService],
     },
   ],
-  exports: ['REDIS_CLIENT'],
+  exports: ['REDIS'],
 })
 export class RedisModule {}

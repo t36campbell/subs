@@ -6,6 +6,7 @@ import {
   Body,
   HttpCode,
   HttpStatus,
+  Get,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { AuthService } from './auth.service';
@@ -14,22 +15,31 @@ import { AuthService } from './auth.service';
 export class AuthController {
   constructor(private authService: AuthService) {}
 
-  @Post('login')
+  @Get('login')
+  @UseGuards(AuthGuard('auth0'))
+  async login() {
+    // Auth0 will redirect to callback
+  }
+
+  @Get('callback')
   @UseGuards(AuthGuard('auth0'))
   @HttpCode(HttpStatus.OK)
-  async login(@Request() req: any) {
+  async callback(@Request() req: any) {
+    // Return Auth0's tokens to the client
     return this.authService.login(req.user);
   }
 
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
-  async refresh(@Body() token: string) {
-    return this.authService.refreshTokens(token);
+  async refresh(@Body() body: { refresh_token: string }) {
+    return this.authService.refreshTokens(body.refresh_token);
   }
 
   @Post('logout')
+  @UseGuards(AuthGuard('jwt'))
   @HttpCode(HttpStatus.NO_CONTENT)
-  async logout(@Body() body: any) {
-    await this.authService.logout(body.refresh_token);
+  async logout(@Request() req: any) {
+    const userId = req.user.userId;
+    await this.authService.logout(userId);
   }
 }
