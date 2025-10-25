@@ -5,22 +5,25 @@ import { ConfigService } from '@nestjs/config';
 import { passportJwtSecret } from 'jwks-rsa';
 
 @Injectable()
-export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
-  constructor(private configService: ConfigService) {
+export class JwtStrategy extends PassportStrategy(Strategy, 'JWT') {
+  constructor(private config: ConfigService) {
+    const auth0Domain = config.get('AUTH0_DOMAIN');
+    const audience = config.get('AUTH0_AUDIENCE');
+
+    const secret_provider = passportJwtSecret({
+      jwksUri: `https://${auth0Domain}/.well-known/jwks.json`,
+      jwksRequestsPerMinute: 3,
+      rateLimit: true,
+      cache: true,
+    });
+
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      secretOrKeyProvider: secret_provider,
+      issuer: `https://${auth0Domain}/`,
       ignoreExpiration: false,
-      // Use Auth0's public key to validate JWT signatures
-      secretOrKeyProvider: passportJwtSecret({
-        cache: true,
-        rateLimit: true,
-        jwksRequestsPerMinute: 3,
-        jwksUri: `https://${configService.get('AUTH0_DOMAIN')}/.well-known/jwks.json`,
-      }),
-      // Validate the audience and issuer
-      audience: configService.get('AUTH0_AUDIENCE'),
-      issuer: `https://${configService.get('AUTH0_DOMAIN')}/`,
       algorithms: ['RS256'],
+      audience,
     });
   }
 
@@ -28,9 +31,10 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     if (!payload.sub) {
       throw new UnauthorizedException('Invalid token');
     }
-    
-    // Auth0 tokens contain rich user information
-    return { 
+    // QA: how to validate the token? 
+    // QA: is this the return value of the guard?
+
+    return {
       userId: payload.sub,
       email: payload.email,
       name: payload.name,

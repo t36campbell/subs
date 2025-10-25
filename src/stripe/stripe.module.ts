@@ -8,12 +8,9 @@ import Stripe from 'stripe';
     {
       provide: 'STRIPE',
       useFactory: (configService: ConfigService) => {
-        return new Stripe(
-          configService.get('STRIPE_SECRET', 'supersecret'),
-          {
-            apiVersion: '2025-09-30.clover',
-          },
-        );
+        return new Stripe(configService.get('STRIPE_SECRET', 'supersecret'), {
+          apiVersion: '2025-09-30.clover',
+        });
       },
       inject: [ConfigService],
     },

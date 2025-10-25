@@ -6,7 +6,7 @@ import Redis from 'ioredis';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  
+
   // Configure Redis client for sessions
   const redisClient = new Redis({
     host: process.env.REDIS_HOST || 'localhost',
@@ -19,7 +19,8 @@ async function bootstrap() {
   app.use(
     session({
       store: new RedisStore({ client: redisClient }),
-      secret: process.env.SESSION_SECRET || 'your-secret-key-change-in-production',
+      secret:
+        process.env.SESSION_SECRET || 'your-secret-key-change-in-production',
       resave: false,
       saveUninitialized: false,
       cookie: {
@@ -30,7 +31,7 @@ async function bootstrap() {
       },
     }),
   );
-  
+
   // Enable CORS
   app.enableCors({
     origin: process.env.CORS_ORIGINS?.split(',') || ['http://localhost:3000'],

@@ -10,19 +10,16 @@ import { RedisModule } from '../redis/redis.module';
 
 @Global()
 @Module({
-  imports: [
-    PassportModule.register({ defaultStrategy: 'jwt' }),
-    RedisModule,
-  ],
+  imports: [PassportModule.register({ defaultStrategy: 'JWT' }), RedisModule],
   controllers: [AuthController],
   providers: [
     {
       provide: 'AUTH0',
-      useFactory: (configService: ConfigService) => {
+      useFactory: (config: ConfigService) => {
         return new ManagementClient({
-          domain: configService.get('AUTH0_DOMAIN', ''),
-          clientId: configService.get('AUTH0_CLIENT_ID', ''),
-          clientSecret: configService.get('AUTH0_CLIENT_SECRET', ''),
+          domain: config.get('AUTH0_DOMAIN', ''),
+          clientId: config.get('AUTH0_CLIENT_ID', ''),
+          clientSecret: config.get('AUTH0_CLIENT_SECRET', ''),
         });
       },
       inject: [ConfigService],

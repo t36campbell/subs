@@ -1,64 +1,50 @@
 import {
   Controller,
-  Put,
+  Post,
   Delete,
   Body,
   Param,
   UseGuards,
   Req,
+  Put,
+  Get,
 } from '@nestjs/common';
 import { SubscriptionsService } from './subscriptions.service';
-import { UpdateSubscriptionDto } from './dto/update-subscription.dto';
+
 import { AuthGuard } from '@nestjs/passport';
+import { Subscription } from './subscriptions.models';
 
 @Controller('subscriptions')
-// @UseGuards(AuthGuard('jwt')) // Uncomment when Auth0 JWT strategy is configured
+// @UseGuards(AuthGuard('JWT')) // Uncomment when Auth0 JWT strategy is configured
 export class SubscriptionsController {
-  constructor(private readonly subscriptionsService: SubscriptionsService) {}
+  constructor(private readonly subscription: SubscriptionsService) {}
+  // TODO: get token from Guard
 
-  @Put(':subscriptionId/upgrade')
-  async upgradeSubscription(
-    @Param('subscriptionId') subscriptionId: string,
-    @Body() updateDto: UpdateSubscriptionDto,
+  @Post(':sid')
+  async upsert(
+    @Param('sid') sid: string,
+    @Body() body: Subscription,
     @Req() req: any,
   ) {
-    // When auth is enabled, use: req.user.sub
-    // For now, pass userId from request body or header
-    const userId = req.headers['x-user-id'] || req.body.userId;
-    return this.subscriptionsService.upgradeSubscription(
-      userId,
-      subscriptionId,
-      updateDto,
-    );
+    const uid = req.headers['x-user-id'] || req.body.uid;
+    return this.subscription.upsert(uid, sid, body);
   }
 
-  @Put(':subscriptionId/downgrade')
-  async downgradeSubscription(
-    @Param('subscriptionId') subscriptionId: string,
-    @Body() updateDto: UpdateSubscriptionDto,
-    @Req() req: any,
-  ) {
-    // When auth is enabled, use: req.user.sub
-    // For now, pass userId from request body or header
-    const userId = req.headers['x-user-id'] || req.body.userId;
-    return this.subscriptionsService.downgradeSubscription(
-      userId,
-      subscriptionId,
-      updateDto,
-    );
+  @Get(':sid')
+  async retrieve(@Param('sid') sid: string, @Req() req: any) {
+    const uid = req.headers['x-user-id'] || req.body.uid;
+    return this.subscription.retrieve(uid, sid);
   }
 
-  @Delete(':subscriptionId/cancel')
-  async cancelSubscription(
-    @Param('subscriptionId') subscriptionId: string,
-    @Req() req: any,
-  ) {
-    // When auth is enabled, use: req.user.sub
-    // For now, pass userId from request body or header
-    const userId = req.headers['x-user-id'] || req.body.userId;
-    return this.subscriptionsService.cancelSubscription(
-      userId,
-      subscriptionId,
-    );
+  @Put(':sid')
+  async resume(@Param('sid') sid: string, @Req() req: any) {
+    const uid = req.headers['x-user-id'] || req.body.uid;
+    return this.subscription.resume(uid, sid);
+  }
+
+  @Delete(':sid')
+  async cancel(@Param('sid') sid: string, @Req() req: any) {
+    const uid = req.headers['x-user-id'] || req.body.uid;
+    return this.subscription.cancel(uid, sid);
   }
 }

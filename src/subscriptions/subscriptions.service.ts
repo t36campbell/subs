@@ -1,97 +1,61 @@
 import { Injectable, HttpException, HttpStatus, Inject } from '@nestjs/common';
+import { Subscription } from './subscriptions.models';
 import Stripe from 'stripe';
-import { AuthService } from '../auth/auth.service';
-import { UpdateSubscriptionDto } from './dto/update-subscription.dto';
+import { Redis } from 'ioredis';
+import { Management, ManagementClient } from 'auth0';
 
 @Injectable()
 export class SubscriptionsService {
   constructor(
+    @Inject('AUTH0') private auth0: ManagementClient,
     @Inject('STRIPE') private stripe: Stripe,
-    private authService: AuthService,
+    @Inject('REDIS') private redis: Redis,
   ) {}
 
-  async upgradeSubscription(
-    userId: string,
-    subscriptionId: string,
-    updateDto: UpdateSubscriptionDto,
-  ) {
-    try {
-      const updatedSubscription = await this.stripe.subscriptions.update(
-        subscriptionId,
-        {
-          items: [{ price: updateDto.priceId }],
-        },
-      );
-
-      // Update Auth0 metadata
-      // await this.authService.updateUserMetadata(userId, {
-      //   subscriptionStatus: updatedSubscription.status,
-      //   subscriptionPlan: updateDto.priceId,
-      // });
-
-      return {
-        message: 'Subscription upgraded successfully',
-        subscription: updatedSubscription,
-      };
-    } catch (error: any) {
-      throw new HttpException(
-        error.message || 'Failed to upgrade subscription',
-        error.status || HttpStatus.BAD_REQUEST,
-      );
-    }
+  async retrieve(
+    uid: string,
+    sid: string,
+  ): Promise<Stripe.Response<Stripe.Subscription>> {
+    return await this.stripe.subscriptions.retrieve(sid);
   }
 
-  async downgradeSubscription(
-    userId: string,
-    subscriptionId: string,
-    updateDto: UpdateSubscriptionDto,
-  ) {
-    try {
-      const updatedSubscription = await this.stripe.subscriptions.update(
-        subscriptionId,
-        {
-          items: [{ price: updateDto.priceId }],
-        },
-      );
-
-      // Update Auth0 metadata
-      // await this.authService.updateUserMetadata(userId, {
-      //   subscriptionStatus: updatedSubscription.status,
-      //   subscriptionPlan: updateDto.priceId,
-      // });
-
-      return {
-        message: 'Subscription downgraded successfully',
-        subscription: updatedSubscription,
-      };
-    } catch (error: any) {
-      throw new HttpException(
-        error.message || 'Failed to downgrade subscription',
-        error.status || HttpStatus.BAD_REQUEST,
-      );
-    }
+  async resume(
+    uid: string,
+    sid: string,
+  ): Promise<Stripe.Response<Stripe.Subscription>> {
+    const sub =  await this.stripe.subscriptions.resume(sid);
+    this.update_user(uid, {})
+    return sub
   }
 
-  async cancelSubscription(userId: string, subscriptionId: string) {
-    try {
-      const canceledSubscription =
-        await this.stripe.subscriptions.cancel(subscriptionId);
+  async upsert(
+    uid: string,
+    sid: string,
+    subscription: Subscription,
+  ): Promise<Stripe.Response<Stripe.Subscription>> {
+    // TODO: get subscription from redis with uid 
+    const s = this.redis.getex('')
 
-      // Update Auth0 metadata
-      // await this.authService.updateUserMetadata(userId, {
-      //   subscriptionStatus: 'canceled',
-      //   subscriptionId: null,
-      // });
+    const sub = await this.stripe.subscriptions.update(sid, {
+      items: [{ price: subscription.priceId }],
+    });
 
-      return {
-        message: 'Subscription canceled successfully',
-        subscription: canceledSubscription,
-      };
-    } catch (error: any) {
-      throw new HttpException(
-        error.message || 'Failed to cancel subscription',
-        error.status || HttpStatus.BAD_REQUEST,
-      );
-    }
+    this.update_user(uid, {})
+
+    return sub;
+  }
+
+  async cancel(
+    uid: string,
+    sid: string,
+  ): Promise<Stripe.Response<Stripe.Subscription>> {
+    const sub = await this.stripe.subscriptions.cancel(sid);
+    this.update_user(uid, {})
+
+    return sub;
+  }
+
+  private async update_user(uid: string, obj: Management.UpdateUserRequestContent = { app_metadata: {}, user_metadata: {} }) {
+    this.auth0.users.update(uid, obj)
   }
 }

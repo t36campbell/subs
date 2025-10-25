@@ -1,0 +1,32 @@
+➜ subs (stuff) ✗ find src -type f -name "*.ts" -exec grep "TODO" {} \; 
+  // TODO: is there an events endpoint that I can subscribe to?
+    // TODO: Auth Guard handles session storing sessions in redis - how does it remove them
+    // TODO: store uid with subscription data for quick RBAC checks
+    // TODO: Type for Token
+// TODO: Add logging module
+  // TODO: get token from Guard
+    // TODO: get subscription from redis with uid 
+➜ subs (stuff) ✗ find src -type f -name "*.ts" -exec grep "QA" {} \;   
+    // QA: Why return value? automatically return OK?
+    // QA: are there multiple types i need to handle like stripe webhooks
+    // QA: can I get token from guard instead of body
+    // QA: do I even need to return anything here?
+    // QA: is there a way to get when a KV was created?
+    // QA: should I get from cache first? 
+    // QA: how to validate the token? 
+    // QA: is this the return value of the guard?
+    // QA: how to validate the auth0 token? 
+    // QA: is this the return value of the guard?
+    // QA: does this handle refresh automatically? should it?
+➜ subs (stuff) ✗ find src -type f -name "*.ts" -exec grep ": any" {} \;
+  async callback(@Request() req: any) {
+  async logout(@Request() req: any) {
+  async login(user: any) {
+  async validate(payload: any) {
+    extraParams: any,
+    profile: any,
+    @Req() req: any,
+  async retrieve(@Param('sid') sid: string, @Req() req: any) {
+  async resume(@Param('sid') sid: string, @Req() req: any) {
+  async cancel(@Param('sid') sid: string, @Req() req: any) {
+➜ subs (stuff) ✗ 

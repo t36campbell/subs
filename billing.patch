@@ -41,7 +41,7 @@ index 0000000..065176b
 +  ) {}
 +
 +  @Post()
-+  @UseGuards(AuthGuard('jwt'))
++  @UseGuards(AuthGuard('JWT'))
 +  @HttpCode(HttpStatus.OK)
 +  async createBillingSession(
 +    @Body() body: CreateBillingSessionDto,
